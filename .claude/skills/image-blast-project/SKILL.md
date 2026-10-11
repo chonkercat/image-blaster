@@ -46,14 +46,14 @@ Only minimal `project.json` and directories are created automatically. `/image-b
    - source file count
    - per-image JSON count
    - staged files moved from `input/`, if any
-   - whether World Labs output exists
+   - whether Tripo environment output exists
    - whether `image.json` exists
    - derived object count
    - whether world-level SFX exists
    - whether `scene.json` exists
-6. If source images now exist and `image.json` is missing, continue directly with the `/image-blast-uncover` workflow for no-cost image analysis and object directory creation. If no source images exist and the user needs to add images, report the `input/` path and ask them to add files there.
+6. If source images now exist and `image.json` is missing, continue directly with the `/image-blast-uncover` workflow for normal Claude image analysis and object directory creation. If no source images exist and the user needs to add images, report the `input/` path and ask them to add files there.
 
-7. Recommend downstream actions only after no-cost setup/analysis is complete, in this order:
+7. Recommend downstream actions only after setup/analysis is complete, in this order:
    - `Agent(image-blast-plate)` for clean plate/source cleanup after object confirmation, when requested or one-shotting
    - `Agent(image-blast-world)` for static 3D environment world generation
    - `Agent(image-blast-3d)` per object 3D generation

@@ -35,7 +35,7 @@ node .claude/scripts/image-edit/generate-edit.mjs \
   --output-slug "<source-slug>-plate"
 ```
 
-Optional provider override: `--provider nano-banana|gpt-image-2`.
+The provider is Tripo (`--provider tripo`). Set `TRIPO_IMAGE_MODEL` in `.env` to choose the Tripo image model; the default is `seedream_v5`. Use `TRIPO_API_KEY` for generation, never a general AI token.
 
 If request metadata records provider URLs but local plate files are missing, fill them from the matching hidden request JSON:
 

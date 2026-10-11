@@ -7,6 +7,7 @@ import {
   parseIndexedName,
   versionLabel,
   worldsUrl,
+  hasCompleteWorldAssets,
 } from '../vite.config.ts'
 
 const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.webp'])
@@ -17,6 +18,16 @@ function file(name: string) {
 }
 
 describe('vite indexed artifact helpers', () => {
+  it('marks Tripo meshes complete without requiring splats and keeps the legacy contract', () => {
+    const mesh = { collider_mesh_url: '/worlds/demo/output/world/0-world.glb', render_materials: true }
+    expect(hasCompleteWorldAssets({ assets: { mesh } })).toBe(true)
+    expect(hasCompleteWorldAssets({ assets: { mesh: { ...mesh, collider_mesh_url: '' } } })).toBe(false)
+    expect(hasCompleteWorldAssets({ assets: { mesh: { collider_mesh_url: mesh.collider_mesh_url } } })).toBe(false)
+    expect(hasCompleteWorldAssets({ assets: {
+      mesh: { collider_mesh_url: mesh.collider_mesh_url },
+      splats: { spz_urls: { full_res: '/worlds/demo/output/world/0-world-full_res.spz' } },
+    } })).toBe(true)
+  })
   it('parses indexed names and sorts indexed files before non-indexed fallbacks', () => {
     expect(parseIndexedName('12-world-pano.PNG')).toEqual({
       index: 12,

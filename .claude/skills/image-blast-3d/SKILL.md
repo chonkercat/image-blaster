@@ -1,7 +1,7 @@
 ---
 name: image-blast-3d
 description: Generate one specified atomic 3D object. Use when the user names exactly one object instance to make, or provides one image plus the object name/description.
-argument-hint: [world-name] [object-id/name or image path + object description] [--image-edit-prompt prompt] [--provider meshy|hunyuan] [--regenerate] [--regenerate-reference] [--target-polycount N] [--face-count N] [--generate-type Normal|LowPoly|Geometry] [--polygon-type triangle|quadrilateral] [--enable-pbr true|false]
+argument-hint: [world-name] [object-id/name or image path + description] [--image-edit-prompt prompt] [--provider tripo] [--regenerate] [--regenerate-reference] [--face-count N] [--texture true|false] [--low-poly true|false] [--enable-pbr true|false]
 allowed-tools: Read Write Glob Bash(ls *) Bash(node .claude/scripts/project/project-state.mjs *) Bash(node .claude/scripts/project/ensure-local-assets.mjs *) Bash(node .claude/scripts/asset-pipeline/generate-single-asset.mjs *)
 context: fork
 agent: image-blast-3d
@@ -56,40 +56,17 @@ If request metadata records provider URLs but local model or image files are mis
 node .claude/scripts/project/ensure-local-assets.mjs --from "<request-json-path>"
 ```
 
-Hunyuan is the default 3D provider. Hunyuan defaults are `--face-count 50000`, `--enable-pbr true`, and `--generate-type Normal`. If the user asks for more detail, polygon reduction, or a white geometry-only model, pass the matching options:
+Tripo is the only image and 3D provider in this fork. It uses `TRIPO_API_KEY`; never use a general AI token or FAL for image/model generation. Claude handles analysis and planning using its normal subscription/API credentials.
 
-- `--face-count <40000-1500000>`
-- `--generate-type Normal|LowPoly|Geometry`
-- `--polygon-type triangle|quadrilateral` for `LowPoly`
+The default H3 model is `v3.1-20260211`, with 50,000 triangle faces and PBR textures. Options:
+
+- `--face-count <1000-1500000>` (v3.0 maximum: 1,000,000)
 - `--enable-pbr true|false`
+- `--texture false` for geometry only
+- `--low-poly true --face-count 5000` for low-poly assets (500–20,000 faces)
+- `--model v3.1-20260211|v3.0-20250812`
 
-Pass `--provider meshy` only when the user asks for Meshy. Meshy defaults are:
-
-```json
-{
-  "topology": "triangle",
-  "target_polycount": 30000,
-  "symmetry_mode": "auto",
-  "should_remesh": true,
-  "should_texture": true,
-  "rigging_height_meters": 1.7,
-  "animation_action_id": 12,
-  "enable_safety_checker": true,
-  "enable_animation": false,
-  "enable_rigging": false,
-  "enable_pbr": true
-}
-```
-
-For Meshy-specific requests, pass the matching options:
-
-- `--target-polycount <integer>`
-- `--topology triangle`
-- `--symmetry-mode auto`
-- `--should-remesh true|false`
-- `--should-texture true|false`
-- `--enable-animation true|false`
-- `--enable-rigging true|false`
+Outputs must be GLB triangle meshes for the viewer. Rigging, texturing and format conversion can use the generic Tripo resource workflow. Old provider overrides are rejected. To migrate legacy unfinished requests, use `--regenerate-reference` to create both a new reference and model through Tripo.
 
 For explicit model regeneration from the existing reference, append `--regenerate`. For a new source extraction and model, append `--regenerate-reference`. For direct single-image generation, use:
 

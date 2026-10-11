@@ -16,11 +16,12 @@ interface Props {
   metricScaleFactor?: number
   shadowOpacity?: number
   shadowColor?: string
+  renderMaterials?: boolean
 }
 
 const ignoreRaycast: THREE.Object3D['raycast'] = () => {}
 
-export function WorldCollider({ url, flipY, groundPlaneOffset, metricScaleFactor, shadowOpacity, shadowColor }: Props) {
+export function WorldCollider({ url, flipY, groundPlaneOffset, metricScaleFactor, shadowOpacity, shadowColor, renderMaterials = false }: Props) {
   const { scene: rawScene } = useGLTF(url)
   const objectRenderMode = useDebugStore((s) => s.objectRenderMode)
   const worldRenderMode = useDebugStore((s) => s.worldRenderMode)
@@ -45,37 +46,40 @@ export function WorldCollider({ url, flipY, groundPlaneOffset, metricScaleFactor
     shadowMat.needsUpdate = true
   }, [shadowColor, shadowMat, shadowOpacity])
 
-  const { scene, overlayScene, dropTargetScene } = useMemo(() => {
+  const { scene, overlayScene, dropTargetScene, originalMaterials } = useMemo(() => {
+    const scene = cloneSkeleton(rawScene)
+    const originalMaterials = new Map<THREE.Mesh, THREE.Material | THREE.Material[]>()
+    scene.traverse((child) => {
+      if (child instanceof THREE.Mesh) originalMaterials.set(child, child.material)
+    })
     const dropTargetScene = cloneSkeleton(rawScene)
     dropTargetScene.traverse((child) => {
       child.layers.set(DROP_TARGET_LAYER)
     })
     return {
-      scene: cloneSkeleton(rawScene),
+      scene,
       overlayScene: cloneSkeleton(rawScene),
       dropTargetScene,
+      originalMaterials,
     }
   }, [rawScene])
 
   const showMesh = worldRenderMode !== WorldRenderMode.ObjectOnly
 
   useEffect(() => {
-    const isShadowCatcher = objectRenderMode === ObjectRenderMode.Lit
+    const isLit = objectRenderMode === ObjectRenderMode.Lit
     scene.traverse((child) => {
       if (!(child instanceof THREE.Mesh)) return
       child.visible = showMesh
       child.raycast = ignoreRaycast
-      child.receiveShadow = isShadowCatcher
-      if (child.material !== wireframeMaterial && child.material !== shadedMaterial && child.material !== shadowMat) {
-        const old = Array.isArray(child.material) ? child.material : [child.material]
-        old.forEach((m) => m?.dispose?.())
-      }
-      child.material = isShadowCatcher ? shadowMat
+      child.receiveShadow = isLit
+      child.material = isLit ? (renderMaterials ? originalMaterials.get(child)! : shadowMat)
         : objectRenderMode === ObjectRenderMode.ShadedWireframe ? shadedMaterial
         : wireframeMaterial
-      child.material.needsUpdate = true
+      const materials = Array.isArray(child.material) ? child.material : [child.material]
+      materials.forEach((material) => { material.needsUpdate = true })
     })
-  }, [scene, showMesh, objectRenderMode, wireframeMaterial, shadedMaterial, shadowMat])
+  }, [scene, showMesh, objectRenderMode, wireframeMaterial, shadedMaterial, shadowMat, renderMaterials, originalMaterials])
 
   useEffect(() => {
     overlayScene.traverse((child) => {

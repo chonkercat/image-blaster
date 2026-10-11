@@ -138,6 +138,13 @@ export function worldsUrl(slug: string, relativePath: string) {
   return `/worlds/${slug}/${relativePath.split(path.sep).join('/')}`
 }
 
+export function hasCompleteWorldAssets(world: WorldManifest | undefined): boolean {
+  const colliderUrl = String(world?.assets?.mesh?.collider_mesh_url || '')
+  const splats = world?.assets?.splats?.spz_urls ?? {}
+  const hasVisuals = world?.assets?.mesh?.render_materials === true || Object.keys(splats).length > 0
+  return Boolean(world && colliderUrl && hasVisuals)
+}
+
 function worldsPlugin(): Plugin {
   const VIRTUAL_ID = 'virtual:worlds'
   const RESOLVED_ID = '\0' + VIRTUAL_ID
@@ -466,12 +473,10 @@ function worldsPlugin(): Plugin {
       const manifest = readWorldManifestForIndex(slug, index)
       if (!manifest && !request) return []
       const world = manifest ? withLocalWorldAssets(slug, manifest, index) : undefined
-      const colliderUrl = String(world?.assets?.mesh?.collider_mesh_url || '')
-      const spzUrls = world?.assets?.splats?.spz_urls ?? {}
       const plate = worldAssetFilename(files, index, 'world-plate', IMAGE_EXTENSIONS)
       const plateImageUrl = plate ? worldAssetUrl(slug, plate) : requestPlateImageUrl(request?.data)
       const requestStatus = statusText(request?.data.status)
-      const complete = Boolean(world && colliderUrl && Object.keys(spzUrls).length)
+      const complete = hasCompleteWorldAssets(world)
       return {
         index,
         label: `v${index}`,

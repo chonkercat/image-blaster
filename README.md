@@ -1,60 +1,91 @@
-<img width="960" height="540" alt="image-blaster-1" src="https://github.com/user-attachments/assets/d294e420-eb48-4f00-b6a8-13005442d1a8" />
+# Image Blaster — Tripo edition
 
-## `image-blaster`
-Creates 3D environments, SFX, and meshes from a single image using Claude skills, World Labs, and FAL. 
-
-Can take you from an image to a fully meshed 3D environment in < 5 minutes, great for jumpstarting 3D work. Go full blast.
-
+A fork of [neilsonnn/image-blaster](https://github.com/neilsonnn/image-blaster) that uses **Tripo3D for images, image edits, 3D models, environment meshes, textures, and resource generation**. Claude still handles image analysis, reasoning, planning, and orchestration with your normal AI subscription or API credentials. Sound effects remain an optional ElevenLabs/FAL feature.
 
 ## Quickstart
 
-1. Open a Terminal, enter `git clone https://github.com/neilsonnn/image-blaster`
-2. Enter the directory with `cd image-blaster`
-3. Run `claude` (install with `curl -fsSL https://claude.ai/install.sh | bash`)
-4. Say hello to Claude, and give them your API key for [World Labs](https://platform.worldlabs.ai/) and [FAL](https://fal.ai/).
-5. Put an image into `input/` directory and ask Claude to `blast it and confirm each step with me`.
+1. Install Node.js 22+, Bun, and Claude Code. If you use nvm, run `nvm install` and `nvm use`.
+2. Clone this fork:
 
-### Description
+   ```bash
+   git clone https://github.com/chonkercat/image-blaster.git
+   cd image-blaster
+   bun install
+   cp .env.example .env
+   ```
 
-By default `image-blaster` will use your input image to create:
+3. Add your [Tripo API key](https://developers.tripo3d.ai/) to `TRIPO_API_KEY` in `.env`. Keep it local; the browser never receives it. Set `FAL_KEY` only if you want sound effects.
+4. Put a source image in `input/`, run `claude`, and ask it to `blast it and confirm each step with me`.
+5. Start the viewer with `bun run dev` if the workflow has not already started it.
 
-1. 3D models (`.glb`, `.obj`) of all *dynamic* objects
-2. Gaussian splat (`.spz`) of the *static* environment,
-3. Ambient looping sound and object specific physics SFX (`.mp3`)
+Tripo generation consumes Tripo credits. General AI tokens are used only for the assistant's normal analysis/planning. No World Labs key is needed, and there is no FAL/OpenAI fallback for image or 3D generation.
 
-### Extensions
+## What changed
 
-You can embed `image-blaster` under the assets of *any game engine, DCC software, or web app*.
+| Task | Provider |
+| --- | --- |
+| Source cleanup, clean plates, object references, new images | Tripo image API (`seedream_v5` by default) |
+| Object meshes and environment mesh | Tripo H3 (`v3.1-20260211` by default) |
+| Textures, model processing, other supported visual resources | Tripo API |
+| Analysis, object identification, prompts, orchestration | Your normal Claude configuration |
+| Optional ambient and object sound effects | ElevenLabs through FAL |
 
-1. Unity, Unreal, or Godot game engine
-2. Blender, 3DS Max, or Maya or other DCC software
-3. Three.js web app or Electron app
+**Environment generation produces a textured GLB mesh.** This replaces the upstream World Labs Gaussian-splat world workflow. Tripo reconstructs an asset from an image or text; a complete explorable room, panorama, and accurate walkable dimensions are not guaranteed. Existing World Labs splat projects remain viewable. With an image, the caption is descriptive metadata: use a clean plate to control which objects appear in the geometry. Text-only environments use text-to-model.
 
-## Advanced
+All outputs are downloaded to local indexed files under `worlds/`. Hidden request files preserve task IDs, progress, inputs, and results so interrupted jobs can resume. Keys are read only by local scripts.
 
-IMAGE-BLASTER uses a few generation models:
+## Configuration
 
-- `marble-1.1` - World Labs Marble model creates the explorable environment.
-- `nano-banana` - default image edit preference for source cleanup, clean plates, and object reference images.
-- `gpt-image-2` - alternate image edit provider when the edit skill is asked to prefer it.
-- `hunyuan-3d` - Hunyuan 3D model creates 3D object models through FAL.
-- `elevenlabs-sfx` - ElevenLabs sound effects model creates ambient and object-specific sounds.
+```dotenv
+TRIPO_API_KEY=your_tripo_key_here
+TRIPO_API_BASE_URL=https://openapi.tripo3d.ai/v3
+TRIPO_MODEL_VERSION=v3.1-20260211
+TRIPO_IMAGE_MODEL=seedream_v5
+FAL_KEY=
+```
 
-3D model creation supports these Hunyuan parameters:
+Use the matching regional Tripo base URL if your key belongs to another region. See [Tripo authentication](https://developers.tripo3d.ai/en/docs/authentication). Never prefix secrets with `VITE_`.
 
-- `--face-count <40000-1500000>`: target face count. IMAGE-BLASTER defaults to `50000`; Hunyuan's API default is `500000`.
-- `--enable-pbr true|false`: enable PBR material generation. Defaults to `true`.
-- `--generate-type Normal|LowPoly|Geometry`: `Normal` creates a textured model, `LowPoly` applies polygon reduction, and `Geometry` creates a white geometry-only model. Defaults to `Normal`.
-- `--polygon-type triangle|quadrilateral`: polygon type for `LowPoly`. Defaults to `triangle`.
+## Direct generation
 
-### Examples
+Create an object reference and GLB model:
 
-- Video game level concepts? `IMAGE-BLAST` it.
-- Your childhood bedroom? `IMAGE-BLAST` it.
-- Need an environment for a robot? `IMAGE-BLAST` it.
-- A film location scout? `IMAGE-BLAST` it.
-- An architectural rendering? `IMAGE-BLAST` it.
+```bash
+node .claude/scripts/asset-pipeline/generate-single-asset.mjs \
+  --world my-scene --image input/room.png --object-name chair \
+  --image-edit-prompt "Isolate the chair on the left. White background, one chair only." \
+  --face-count 50000 --enable-pbr true
+```
 
-### Development
+Create an environment mesh from the latest staged source image:
 
-- remove `/app` from the `.claudeignore` file to give Claude the ability to change the React viewer.
+```bash
+node .claude/scripts/world/generate-world.mjs --world my-scene
+```
+
+Generate a new image, texture, or other Tripo resource through the generic helper:
+
+```bash
+node .claude/scripts/tripo/run-tripo.mjs \
+  --endpoint generation/text-to-image \
+  --input-json '{"prompt":"A small wooden treasure chest on white","model":"seedream_v5","size":"2K","output_format":"png"}' \
+  --output-dir worlds/my-scene/source --output-slug treasure-chest
+```
+
+For image edits, use `generate-edit.mjs` with `--image`, `--prompt`, `--output-dir`, and `--output-slug`. For direct text-to-3D or image-to-3D, use `tripo-3d.mjs` with `--prompt` or `--image` and `--output-dir`. Generic resource input JSON follows the [official Tripo API schema](https://developers.tripo3d.ai/en/docs/introduction); local files use `--file input=<path>` or `--file inputs.0=<path>`.
+
+Model options include `--face-count` (default 50,000; environments 100,000), `--enable-pbr true|false`, `--texture false` for geometry only, and `--low-poly true --face-count 5000` (500–20,000 faces). Triangle GLB output is required by the viewer. Images default to one PNG at 2K. Explicit unsupported masks, seeds, and old provider overrides are rejected.
+
+Rerun the same command to resume an interrupted task. Use `--regenerate` for a fresh model/environment, or `--regenerate-reference` for a fresh object extraction and model. Legacy pending FAL/World Labs tasks are not resumed through Tripo: regenerate them explicitly. Existing local assets can still be reused.
+
+## Development
+
+```bash
+bun run test
+bun run typecheck
+bun run build
+```
+
+The pipeline tests mock Tripo's HTTP contract and need no API keys or paid requests. The React viewer is in `app/`; generation scripts and Claude workflows are in `.claude/`. Remove `/app` from `.claudeignore` to let Claude modify the viewer. Generated files and `.env` stay gitignored.
+
+License and original project attribution are preserved in [LICENSE.md](LICENSE.md).

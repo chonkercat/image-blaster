@@ -12,8 +12,8 @@ alwaysApply: true
 - The shared working area is `worlds/`, and staged user input starts in `input/`. Both are gitignored.
 - The canonical Image Blast file convention lives in `.claude/rules/project.md`. Keep generated state simple: `ls -a` first, visible indexed artifacts for outputs, hidden request JSON for request/resume details.
 - Environment keys:
-  - `WORLD_LABS_API_KEY` for `/image-blast-world`.
-  - `FAL_KEY` for `/image-blast-3d`, `/image-blast-sfx`, and FAL-backed image editing.
+  - `TRIPO_API_KEY` for all image, world mesh, 3D model, texture, and resource generation.
+  - Optional `FAL_KEY` for `/image-blast-sfx` only. General AI credentials are for analysis/planning.
 - The repository root is the Bun workspace root. Run package-manager commands from the root; do not create ad hoc root dependencies outside the workspace.
   - `bun install`
   - `bun run dev`
@@ -29,4 +29,4 @@ alwaysApply: true
 - Keep the React viewer modular. Character controller, audio, post-processing, loading transitions, scene objects, and splat rendering should remain independent modules composed at the scene level.
 - Use `wouter` for routing. The active world is driven by `/<world-name>`, and `/` loads the first available world.
 - Mobile support matters. Character controls should support touch input alongside keyboard/mouse.
-- FAL and World Labs API calls belong in implementation scripts, not standalone direct-use skills. Skills should stay thin workflow wrappers.
+- Tripo and optional sound API calls belong in implementation scripts, not standalone direct-use skills. Skills should stay thin workflow wrappers.

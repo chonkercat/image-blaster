@@ -1,17 +1,15 @@
 import { describe, it, expect } from 'vitest'
-import dotenv from 'dotenv'
+import fs from 'fs'
 import path from 'path'
+import dotenv from 'dotenv'
 
-dotenv.config({ path: path.resolve(__dirname, '../../.env') })
+const example = dotenv.parse(fs.readFileSync(path.resolve(__dirname, '../../.env.example')))
 
-describe('env vars', () => {
-  it('WORLD_LABS_API_KEY is set', () => {
-    expect(typeof process.env.WORLD_LABS_API_KEY).toBe('string')
-    expect(process.env.WORLD_LABS_API_KEY!.length).toBeGreaterThan(0)
-  })
-
-  it('FAL_KEY is set', () => {
-    expect(typeof process.env.FAL_KEY).toBe('string')
-    expect(process.env.FAL_KEY!.length).toBeGreaterThan(0)
+describe('environment configuration', () => {
+  it('requires only Tripo for asset generation and leaves sound optional', () => {
+    expect(example.TRIPO_API_KEY).toBe('your_tripo_key_here')
+    expect(example.TRIPO_API_BASE_URL).toBe('https://openapi.tripo3d.ai/v3')
+    expect(example.FAL_KEY).toBe('')
+    expect(example).not.toHaveProperty('WORLD_LABS_API_KEY')
   })
 })

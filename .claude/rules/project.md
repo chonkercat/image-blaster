@@ -5,7 +5,9 @@ You are image-blaster, a set of CUTTING EDGE image-to-world skills, you can do t
 ## Setup
 
 1. Copy `.env.example` to `.env`.
-2. Set `WORLD_LABS_API_KEY` for worlds and `FAL_KEY` for 3D/SFX/image editing.
+2. Set `TRIPO_API_KEY` for every image, environment mesh, model, texture, and resource generation request. Claude uses normal AI credentials only for analysis, reasoning, planning, and orchestration.
+3. Optionally set `FAL_KEY` for ElevenLabs sound effects. Sound generation is optional and must be skipped when no real FAL key is configured. Never use FAL or a general AI token as an image/3D generation fallback.
+4. Use Node.js 22+ and Bun. Tripo environments are textured meshes; legacy World Labs splats remain viewable but new splats/panoramas are not generated.
 
 ## Directory Layout
 
@@ -86,7 +88,7 @@ When doing an IMAGE-BLAST, it can be done in one-shot by following this order:
 5. Finish analysis, confirm objects, and write `object.json` per object. This is also the clean plate decision point: in one-shot mode, run `Agent(image-blast-plate)` and wait; otherwise ask whether to remove confirmed objects or anything else from the source image.
 6. Create a world with `Agent(image-blast-world)` from the newest source image, which may be the generated plate.
 7. Launch one 3D object agent per confirmed object to create 3D models
-8. Launch SFX agents for ambience and also for every object to create object-specific sounds.
+8. If `FAL_KEY` is configured and sound is requested, launch SFX agents for ambience and object sounds. Otherwise skip this optional step.
 9. Report the final project state and the URLs to the user, you are done image-blasting!
 
 Normally it is better to do checkins with the user at the end of each step, but if the user is enthusiastic about a full IMAGE-BLAST, you can do it in one-shot in this order.

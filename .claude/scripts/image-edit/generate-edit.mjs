@@ -1,23 +1,20 @@
 #!/usr/bin/env node
 import { rename } from "node:fs/promises";
 import path from "node:path";
+import { finishTripoRequest, requestNeedsResume } from "../asset-pipeline/tripo-client.mjs";
 import { runImageEdit } from "../asset-pipeline/image-edit.mjs";
 import {
-  downloadRemoteFiles,
   ensureDir,
-  getFalQueueResult,
   many,
   one,
   parseArgs,
   pathExists,
-  pollFalQueue,
   readJson,
   slugify,
   writeJson
 } from "../asset-pipeline/fal-queue.mjs";
 import {
   artifactPath,
-  buildRequestSummary,
   nextIndex,
   requestMetadataFiles,
   requestPath
@@ -36,53 +33,8 @@ function firstGeneratedImage(imageEditSummary) {
   return (imageEditSummary.downloaded_files || []).find(isGeneratedImage);
 }
 
-function statusText(value) {
-  return String(value || "").toLowerCase();
-}
-
-function isActiveRequest(request) {
-  const status = statusText(request.data?.status);
-  return Boolean(request.data?.request_id && request.data?.endpoint) &&
-    !["completed", "failed", "cancelled", "canceled"].includes(status);
-}
-
 async function resumeImageEditRequest(request, outputDir, slug) {
-  const status = await pollFalQueue(request.data.endpoint, request.data.request_id, {
-    statusUrl: request.data.status_url,
-    metadataPath: request.path
-  });
-  const result = await getFalQueueResult(request.data.endpoint, request.data.request_id, {
-    responseUrl: request.data.response_url,
-    metadataPath: request.path
-  });
-  const downloaded = await downloadRemoteFiles(result.data, outputDir, slug);
-  const summary = buildRequestSummary({
-    kind: "2d",
-    provider: request.data.provider || request.data.endpoint,
-    endpoint: request.data.endpoint,
-    metadata: {
-      index: request.index,
-      role: request.data.role,
-      output_slug: request.data.output_slug || slug,
-      input_images: request.data.input_images,
-      mask_image: request.data.mask_image,
-      provider_alias: request.data.provider_alias
-    },
-    requestId: request.data.request_id,
-    submittedAt: request.data.submitted_at,
-    prompt: request.data.prompt,
-    inputFiles: request.data.input_files || request.data.input_images || [],
-    outputFiles: downloaded.map((file) => file.path),
-    downloadedFiles: downloaded,
-    result: result.data,
-    extra: { queue_status: status.status }
-  });
-
-  await writeJson(request.path, summary);
-  return {
-    ...summary,
-    provider_alias: request.data.provider_alias
-  };
+  return finishTripoRequest(request, outputDir, slug);
 }
 
 export async function generateEdit(options) {
@@ -112,7 +64,8 @@ export async function generateEdit(options) {
   const slug = slugify(outputSlug || role);
   if (!slug) throw new Error("--output-slug or --role must produce a usable slug.");
 
-  const activeRequest = (await requestMetadataFiles(outputDir, { slug })).find(isActiveRequest);
+  const latestRequest = (await requestMetadataFiles(outputDir, { slug }))[0];
+  const activeRequest = await requestNeedsResume(latestRequest) ? latestRequest : undefined;
   const outputIndex = activeRequest?.index ?? await nextIndex(outputDir);
   const extension = `.${String(outputFormat).replace(/^\./, "") || "png"}`;
   const outputPath = artifactPath(outputDir, outputIndex, slug, extension);

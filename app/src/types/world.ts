@@ -1,5 +1,5 @@
 export interface WorldAssets {
-  mesh: { collider_mesh_url: string }
+  mesh: { collider_mesh_url: string; render_materials?: boolean }
   imagery: { pano_url: string }
   splats: {
     spz_urls: {

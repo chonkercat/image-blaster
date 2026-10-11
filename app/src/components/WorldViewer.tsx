@@ -251,6 +251,7 @@ export function WorldViewer({
                     metricScaleFactor={activeMetricScaleFactor}
                     shadowOpacity={activeShadowCatcherOpacity}
                     shadowColor={activeShadowCatcherColor}
+                    renderMaterials={desiredWorld?.assets.mesh.render_materials}
                   />
                 </Suspense>
               </OptionalAssetBoundary>
