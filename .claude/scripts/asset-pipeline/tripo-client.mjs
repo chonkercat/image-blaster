@@ -153,8 +153,9 @@ export async function finishTripoRequest(request, outputDir, prefix = "tripo", o
 export async function requestNeedsResume(request) {
   if (!request?.data?.request_id) return false;
   const record = request.data;
-  if (["failed", "cancelled", "canceled"].includes(record.status)) return false;
-  if (record.status !== "completed" || !record.output_files?.length) return true;
+  const status = String(record.status).toLowerCase();
+  if (record.error || ["failed", "cancelled", "canceled"].includes(status)) return false;
+  if (status !== "completed" || !record.output_files?.length) return true;
   const exists = await Promise.all(record.output_files.map(pathExists));
   return exists.some((value) => !value);
 }

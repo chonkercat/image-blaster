@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { rename } from "node:fs/promises";
 import path from "node:path";
-import { finishTripoRequest, requestNeedsResume } from "../asset-pipeline/tripo-client.mjs";
+import { finishAssetRequest, requestNeedsResume } from "../asset-pipeline/resume-request.mjs";
 import { runImageEdit } from "../asset-pipeline/image-edit.mjs";
 import {
   ensureDir,
@@ -34,7 +34,7 @@ function firstGeneratedImage(imageEditSummary) {
 }
 
 async function resumeImageEditRequest(request, outputDir, slug) {
-  return finishTripoRequest(request, outputDir, slug);
+  return finishAssetRequest(request, outputDir, slug);
 }
 
 export async function generateEdit(options) {

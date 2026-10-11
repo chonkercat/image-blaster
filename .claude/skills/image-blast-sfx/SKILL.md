@@ -11,7 +11,7 @@ Generate an SFX for project `$0`.
 
 ## Instructions
 
-- Sound generation is optional. Use `FAL_KEY` only for ElevenLabs sound effects; if no real key is configured, skip this step and report that sound is disabled. Tripo handles all image and 3D resources.
+- Sound generation is optional. Use `FAL_KEY` for ElevenLabs sound effects; if no real key is configured, skip this step and report that sound is disabled. Visual generation follows `ASSET_GENERATION_STACK`; sound uses FAL in either stack.
 
 - If `$0` is missing, ask for the world slug.
 - If the SFX target is missing or ambiguous, ask for exactly one request.

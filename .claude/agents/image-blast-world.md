@@ -1,6 +1,6 @@
 ---
 name: image-blast-world
-description: Runs one Image Blast Tripo mesh environment generation in the background. Use for non-blocking world generation when the prompt names one world slug and optional source image or world prompt.
+description: Runs one Image Blast selected-provider environment generation in the background. Use for non-blocking world generation when the prompt names one world slug and optional source image or world prompt.
 tools: Read, Write, Glob, Bash
 model: inherit
 background: true
@@ -8,7 +8,7 @@ skills:
   - image-blast-world
 ---
 
-Run exactly one Tripo mesh environment world generation.
+Run exactly one selected-provider environment world generation.
 
 Follow the preloaded `image-blast-world` skill. Source cleanup belongs to `image-blast-plate` and should happen before this agent when needed.
 

@@ -25,7 +25,10 @@ beforeEach(async () => {
   delete process.env.TRIPO_API_BASE_URL;
   delete process.env.TRIPO_IMAGE_MODEL;
   delete process.env.TRIPO_MODEL_VERSION;
+  process.env.ASSET_GENERATION_STACK = "tripo";
   delete process.env.ASSET_IMAGE_EDIT_PROVIDER;
+  delete process.env.ASSET_3D_PROVIDER;
+  delete process.env.ASSET_WORLD_PROVIDER;
   delete process.env.FAL_KEY;
   delete process.env.WORLD_LABS_API_KEY;
   calls = [];
@@ -125,9 +128,9 @@ test("generates low-poly geometry and validates before submitting", async () => 
   assert.equal(posts().length, count);
 });
 
-test("rejects legacy providers and unsupported image options without a request", async () => {
+test("rejects unknown providers and unsupported Tripo image options without a request", async () => {
   fakeTripo();
-  await assert.rejects(runImageEdit({ provider: "gpt-image-2", prompt: "Edit", images: ["https://example.com/a.png"], outputDir: dir }), /Tripo only/);
+  await assert.rejects(runImageEdit({ provider: "unknown", prompt: "Edit", images: ["https://example.com/a.png"], outputDir: dir }), /Unsupported ASSET_IMAGE_EDIT_PROVIDER/);
   await assert.rejects(runImageEdit({ prompt: "Edit", outputDir: dir, maskImage: "mask.png" }), /mask\/seed/);
   await assert.rejects(runImageEdit({ prompt: "Edit", outputDir: dir, quality: "medium" }), /only supported/);
   assert.equal(calls.length, 0);
@@ -183,6 +186,7 @@ test("image edits resume after download failure without a duplicate paid task", 
   const options = { images: [await inputImage()], prompt: "Clean plate", outputDir: dir, outputSlug: "plate" };
   await assert.rejects(generateEdit(options), /Download failed/);
   fail = false;
+  process.env.ASSET_GENERATION_STACK = "original";
   const result = await generateEdit(options);
   assert.equal(result.output_image, path.join(dir, "0-plate.png"));
   assert.equal(posts().length, 1);
@@ -242,6 +246,7 @@ test("environment generation repairs missing local outputs without paying again"
   const options = { world: "example", prompt: "A stone courtyard" };
   const first = await generateWorld(options);
   await rm(first.glb);
+  process.env.ASSET_GENERATION_STACK = "original";
   const repaired = await generateWorld(options);
   assert.equal(repaired.index, first.index);
   await access(repaired.glb);

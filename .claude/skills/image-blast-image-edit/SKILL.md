@@ -1,6 +1,6 @@
 ---
 name: image-blast-image-edit
-description: Generate one image edit from explicit input images and a prompt. Use for source cleanup, clean plates, object removal, or other Tripo-backed image edits.
+description: Generate one image edit from explicit input images and a prompt. Use for source cleanup, clean plates, object removal, or other provider-selected image edits.
 argument-hint: [image path] [prompt] [optional output dir, role, output slug]
 allowed-tools: Read Write Glob Bash(ls *) Bash(node .claude/scripts/project/ensure-local-assets.mjs *) Bash(node .claude/scripts/image-edit/generate-edit.mjs *)
 context: fork
@@ -28,7 +28,7 @@ node .claude/scripts/image-edit/generate-edit.mjs \
   --output-slug "<output slug>"
 ```
 
-The provider is Tripo (`--provider tripo`). Set `TRIPO_IMAGE_MODEL` in `.env` to choose the Tripo image model; the default is `seedream_v5`. Use `TRIPO_API_KEY` for generation, never a general AI token.
+The helper reads `ASSET_GENERATION_STACK` from `.env`: `tripo` uses Tripo images; `original` uses FAL Nano Banana 2. Optional `--provider tripo|nano-banana|gpt-image-2` overrides this selection. Use provider API keys for generation and normal AI credentials for analysis. Interrupted requests resume with their saved provider.
 
 If request metadata records provider URLs but local image files are missing, fill them from the matching hidden request JSON:
 

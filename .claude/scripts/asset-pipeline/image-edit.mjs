@@ -2,20 +2,24 @@
 import { loadDotEnv, many, one, parseArgs } from "./fal-queue.mjs";
 import { requestPath } from "./request-metadata.mjs";
 import { runTripoTask, toTripoInput } from "./tripo-client.mjs";
+import { runNanoBananaEdit } from "./nano-banana-edit.mjs";
+import { runGptImage2Edit } from "./gpt-image-2-edit.mjs";
+import { resolveImageEditProvider } from "./provider-config.mjs";
+
+export { resolveImageEditProvider };
 
 const IMAGE_MODELS = new Set(["seedream_v5", "seedream_v4", "banana", "banana_pro", "banana2", "chat_image_2", "chat_image_2.5_flare", "chat_image_2.5_sunburst"]);
 
-export function resolveImageEditProvider(provider) {
-  const resolved = provider || process.env.ASSET_IMAGE_EDIT_PROVIDER || "tripo";
-  if (resolved !== "tripo") throw new Error(`Image generation uses Tripo only. Replace provider "${resolved}" with "tripo".`);
-  return resolved;
-}
-
 export async function runImageEdit(options) {
   await loadDotEnv();
-  resolveImageEditProvider(options.provider);
+  const provider = resolveImageEditProvider(options.provider);
   const { prompt, images = [], outputDir, outputFormat = "png" } = options;
   if (!prompt || !outputDir) throw new Error("prompt and outputDir are required.");
+  if (provider !== "tripo") {
+    const run = provider === "nano-banana" ? runNanoBananaEdit : runGptImage2Edit;
+    return { ...await run({ ...options, images, metadata: { ...options.metadata, provider_alias: provider },
+      metadataPath: options.metadataPath || requestPath(outputDir, 0, "image-edit") }), provider_alias: provider };
+  }
   if (Number(options.numImages ?? 1) !== 1) throw new Error("Generate one image per request (--num-images 1).");
   if (options.maskImage || options.seed !== undefined) throw new Error("Tripo image requests do not support this mask/seed option; describe the edit in the prompt.");
   const model = options.model || process.env.TRIPO_IMAGE_MODEL || "seedream_v5";

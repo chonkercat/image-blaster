@@ -5,9 +5,10 @@ You are image-blaster, a set of CUTTING EDGE image-to-world skills, you can do t
 ## Setup
 
 1. Copy `.env.example` to `.env`.
-2. Set `TRIPO_API_KEY` for every image, environment mesh, model, texture, and resource generation request. Claude uses normal AI credentials only for analysis, reasoning, planning, and orchestration.
-3. Optionally set `FAL_KEY` for ElevenLabs sound effects. Sound generation is optional and must be skipped when no real FAL key is configured. Never use FAL or a general AI token as an image/3D generation fallback.
-4. Use Node.js 22+ and Bun. Tripo environments are textured meshes; legacy World Labs splats remain viewable but new splats/panoramas are not generated.
+2. Choose `ASSET_GENERATION_STACK=tripo|original` in `.env`. Tripo uses `TRIPO_API_KEY` for visual generation. Original uses `WORLD_LABS_API_KEY` for environments and `FAL_KEY` for images, models, and resources. Claude uses normal AI credentials for analysis and planning.
+3. Run `node .claude/scripts/asset-pipeline/provider-config.mjs --check` to see the resolved providers and missing key names without exposing secrets. Optional per-task overrides are documented in `.env.example`; never force Tripo in a prompt when the selected stack is original. Do not fall back to a different paid provider on failure.
+4. Sound effects use ElevenLabs/FAL in either stack and are optional. Skip them when no real `FAL_KEY` is configured. Use Node.js 22+ and Bun. Tripo worlds are textured meshes; original World Labs worlds include splats and panoramas.
+5. Existing outputs are reused across stack changes. Interrupted jobs resume with their recorded provider. Use `--regenerate` for a fresh world/model or `--regenerate-reference` for a fresh object image and model; preserve earlier indexed files.
 
 ## Directory Layout
 

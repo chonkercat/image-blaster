@@ -43,6 +43,9 @@ export async function requireEnv(name) {
   if (!value) {
     throw new Error(`${name} is not set. Add it to .env before running this script.`);
   }
+  if (/^(your_.*_key_here|changeme|todo)$/i.test(value.trim())) {
+    throw new Error(`${name} contains a placeholder. Add your real key to .env.`);
+  }
   return value;
 }
 
@@ -322,6 +325,8 @@ export async function submitFalQueue(endpoint, input, options = {}) {
 
   const submitted = stripBase64({
     ...metadata,
+    service: "fal",
+    input,
     endpoint,
     request_id: requestId,
     status: "submitted",
@@ -342,11 +347,13 @@ export async function pollFalQueue(endpoint, requestId, options = {}) {
     metadataPath,
     pollIntervalMs = 5000,
     logs = true,
-    onStatus
+    onStatus,
+    timeoutMs = 20 * 60 * 1000
   } = options;
 
   const falKey = await requireEnv("FAL_KEY");
   let statusBody;
+  const startedAt = Date.now();
   while (true) {
     const requestStatusUrl = new URL(
       providedStatusUrl || `https://queue.fal.run/${endpoint}/requests/${requestId}/status`
@@ -378,6 +385,12 @@ export async function pollFalQueue(endpoint, requestId, options = {}) {
         throw new Error(`FAL request failed${message}.`);
       }
       break;
+    }
+    if (["FAILED", "CANCELLED", "CANCELED"].includes(statusBody.status)) {
+      throw new Error(`FAL request ${requestId} ${statusBody.status.toLowerCase()}.`);
+    }
+    if (Date.now() - startedAt >= timeoutMs) {
+      throw new Error(`FAL task ${requestId} is still running. Rerun the command to resume it.`);
     }
 
     await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));

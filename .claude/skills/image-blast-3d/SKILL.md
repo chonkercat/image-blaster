@@ -1,7 +1,7 @@
 ---
 name: image-blast-3d
 description: Generate one specified atomic 3D object. Use when the user names exactly one object instance to make, or provides one image plus the object name/description.
-argument-hint: [world-name] [object-id/name or image path + description] [--image-edit-prompt prompt] [--provider tripo] [--regenerate] [--regenerate-reference] [--face-count N] [--texture true|false] [--low-poly true|false] [--enable-pbr true|false]
+argument-hint: [world-name] [object-id/name or image path + description] [--image-edit-prompt prompt] [--provider tripo|hunyuan|meshy] [--regenerate] [--regenerate-reference] [--face-count N] [--texture true|false] [--low-poly true|false] [--enable-pbr true|false]
 allowed-tools: Read Write Glob Bash(ls *) Bash(node .claude/scripts/project/project-state.mjs *) Bash(node .claude/scripts/project/ensure-local-assets.mjs *) Bash(node .claude/scripts/asset-pipeline/generate-single-asset.mjs *)
 context: fork
 agent: image-blast-3d
@@ -56,17 +56,11 @@ If request metadata records provider URLs but local model or image files are mis
 node .claude/scripts/project/ensure-local-assets.mjs --from "<request-json-path>"
 ```
 
-Tripo is the only image and 3D provider in this fork. It uses `TRIPO_API_KEY`; never use a general AI token or FAL for image/model generation. Claude handles analysis and planning using its normal subscription/API credentials.
+The helper reads `ASSET_GENERATION_STACK` from `.env`: `tripo` uses Tripo for references and meshes; `original` uses FAL Nano Banana 2 for references and Hunyuan3D v3 for meshes. `ASSET_IMAGE_EDIT_PROVIDER` and `ASSET_3D_PROVIDER` are optional per-task overrides. Explicit `--image-edit-provider tripo|nano-banana|gpt-image-2` and `--provider tripo|hunyuan|meshy` take precedence. Leave overrides unset when using the master switch.
 
-The default H3 model is `v3.1-20260211`, with 50,000 triangle faces and PBR textures. Options:
+Tripo defaults to `v3.1-20260211`, 50,000 triangle faces, PBR, and 2K reference images. It supports `--texture false` and `--low-poly true --face-count 5000` (500–20,000 faces). Hunyuan defaults to 50,000 faces, PBR, and 1K references; its face range is 40,000–1,500,000 and it supports `--generate-type Normal|LowPoly|Geometry`. Meshy defaults to 30,000 polygons and accepts `--target-polycount` and `--topology`. Use triangle GLB meshes in the viewer.
 
-- `--face-count <1000-1500000>` (v3.0 maximum: 1,000,000)
-- `--enable-pbr true|false`
-- `--texture false` for geometry only
-- `--low-poly true --face-count 5000` for low-poly assets (500–20,000 faces)
-- `--model v3.1-20260211|v3.0-20250812`
-
-Outputs must be GLB triangle meshes for the viewer. Rigging, texturing and format conversion can use the generic Tripo resource workflow. Old provider overrides are rejected. To migrate legacy unfinished requests, use `--regenerate-reference` to create both a new reference and model through Tripo.
+Use `TRIPO_API_KEY` for Tripo and `FAL_KEY` for FAL. Normal AI credentials handle analysis/planning. Pending jobs always resume with the recorded provider, including across stack changes; never regenerate merely because polling was interrupted.
 
 For explicit model regeneration from the existing reference, append `--regenerate`. For a new source extraction and model, append `--regenerate-reference`. For direct single-image generation, use:
 

@@ -2,10 +2,14 @@
 import { readdir, rename } from "node:fs/promises";
 import path from "node:path";
 import { TRIPO_3D_PROVIDER, runTripo3D } from "./tripo-3d.mjs";
-import { finishTripoRequest } from "./tripo-client.mjs";
+import { finishAssetRequest } from "./resume-request.mjs";
+import { resolve3DProvider } from "./provider-config.mjs";
+import { runHunyuan3D } from "./hunyuan-3d.mjs";
+import { runMeshy3D } from "./meshy-3d.mjs";
 import { runImageEdit } from "./image-edit.mjs";
 import {
   ensureDir,
+  loadDotEnv,
   one,
   parseArgs,
   pathExists,
@@ -81,13 +85,14 @@ function buildDirectObject({ objectId, objectName, description, image, world }) 
   };
 }
 
-function resolve3DProvider(value = DEFAULT_3D_PROVIDER) {
-  if (value !== "tripo") throw new Error(`3D generation uses Tripo only. Replace provider "${value}" with "tripo".`);
-  return TRIPO_3D_PROVIDER;
+function modelRequestPrefix(request, fallbackProvider) {
+  return request?.data?.provider_slug || (request?.data?.endpoint?.includes("hunyuan") ? "hunyuan" : request?.data?.endpoint?.includes("meshy") ? "meshy" : fallbackProvider);
 }
-
-function modelRequestPrefix() { return TRIPO_3D_PROVIDER; }
-async function run3DProvider(options) { return runTripo3D(options); }
+async function run3DProvider(options) {
+  if (options.provider === "hunyuan") return runHunyuan3D(options);
+  if (options.provider === "meshy") return runMeshy3D(options);
+  return runTripo3D(options);
+}
 
 function nowIso() {
   return new Date().toISOString();
@@ -255,11 +260,12 @@ async function normalizeModelFiles(downloadedFiles, objectDir, objectId, request
   return normalized;
 }
 
-async function resumeTripoRequest(request, prefix, outputDir, pollIntervalMs = 5000) {
-  return finishTripoRequest(request, outputDir, prefix, { pollIntervalMs });
+async function resumeAssetRequest(request, prefix, outputDir, pollIntervalMs = 5000) {
+  return finishAssetRequest(request, outputDir, prefix, { pollIntervalMs });
 }
 
 export async function generateSingleObject(options) {
+  await loadDotEnv();
   const {
     world,
     objectId,
@@ -291,7 +297,8 @@ export async function generateSingleObject(options) {
   });
 
   const object = cleanObject(resolved.object, resolved.objectDir);
-  const provider = resolve3DProvider(modelProvider || DEFAULT_3D_PROVIDER);
+  const provider = resolve3DProvider(modelProvider);
+  let actualModelProvider = provider;
   const regenerateModel = regenerate || regenerateReference;
   await ensureDir(resolved.objectDir);
   await writeObjectIntent(resolved.objectJsonPath, world, object);
@@ -351,7 +358,7 @@ export async function generateSingleObject(options) {
         );
       }
       const imageEdit = imageRequest
-        ? await resumeTripoRequest(imageRequest, "image-edit", resolved.objectDir)
+        ? await resumeAssetRequest(imageRequest, "image-edit", resolved.objectDir)
         : await runImageEdit({
             provider: imageEditProvider,
             prompt: imageEditPrompt,
@@ -360,7 +367,6 @@ export async function generateSingleObject(options) {
             metadataPath: imageMetadataPath,
             metadata: { index: requestIndex },
             numImages: 1,
-            resolution: "2K",
             aspectRatio: "1:1",
             outputFormat: "png",
             limitGenerations: true
@@ -414,7 +420,7 @@ export async function generateSingleObject(options) {
             : undefined;
       modelMetadataPath = modelRequest?.path || requestPath(resolved.objectDir, requestIndex, object.id, "model");
       const modelGeneration = modelRequest
-        ? await resumeTripoRequest(
+        ? await resumeAssetRequest(
             modelRequest,
             modelRequestPrefix(modelRequest, provider),
             resolved.objectDir,
@@ -431,11 +437,16 @@ export async function generateSingleObject(options) {
             enablePbr,
             texture,
             lowPoly,
-            model
+            model,
+            generateType: options.generateType || (String(texture) === "false" ? "Geometry" : String(lowPoly) === "true" ? "LowPoly" : undefined),
+            polygonType: options.polygonType,
+            topology: options.topology,
+            targetPolycount: options.targetPolycount ?? faceCount,
+            shouldTexture: texture
           });
-
+      actualModelProvider = modelGeneration.provider_slug || modelRequestPrefix(modelRequest, provider);
       if (!(modelGeneration.downloaded_files || []).some((file) => /\.glb$/i.test(file.path))) {
-        throw new Error("Tripo did not return a GLB model required by the viewer.");
+        throw new Error("The provider did not return a GLB model required by the viewer.");
       }
       const normalizedModelFiles = await normalizeModelFiles(
         modelGeneration.downloaded_files || [],
@@ -464,7 +475,7 @@ export async function generateSingleObject(options) {
       object,
       object_json: resolved.objectJsonPath,
       output_dir: resolved.objectDir,
-      model_provider: provider,
+      model_provider: actualModelProvider,
       reference_image: generatedImagePath,
       model_files: modelFiles,
       request_metadata: [imageMetadataPath, modelMetadataPath].filter(Boolean)
@@ -488,7 +499,7 @@ async function main() {
 
   if (!world || (!objectId && !directImage)) {
     throw new Error(
-      "Usage: node generate-single-asset.mjs --world <world-name> (--object-id <object-id> | --image <path>) --image-edit-prompt <prompt> [--provider tripo] [--regenerate] [--regenerate-reference] [--reference-only] [--face-count 50000] [--enable-pbr true|false] [--texture true|false] [--low-poly true|false]"
+      "Usage: node generate-single-asset.mjs --world <world-name> (--object-id <object-id> | --image <path>) --image-edit-prompt <prompt> [--provider tripo|hunyuan|meshy] [--regenerate] [--regenerate-reference] [--reference-only] [--face-count 50000] [--enable-pbr true|false] [--texture true|false] [--low-poly true|false]"
     );
   }
 
@@ -508,7 +519,9 @@ async function main() {
     enablePbr: one(flags, "enable-pbr", true),
     texture: one(flags, "texture", true),
     lowPoly: one(flags, "low-poly", false),
-    model: one(flags, "model")
+    model: one(flags, "model"),
+    generateType: one(flags, "generate-type"), polygonType: one(flags, "polygon-type"),
+    topology: one(flags, "topology"), targetPolycount: one(flags, "target-polycount")
   });
 
   console.log(JSON.stringify(result, null, 2));

@@ -46,7 +46,7 @@ Only minimal `project.json` and directories are created automatically. `/image-b
    - source file count
    - per-image JSON count
    - staged files moved from `input/`, if any
-   - whether Tripo environment output exists
+   - whether environment output exists
    - whether `image.json` exists
    - derived object count
    - whether world-level SFX exists
